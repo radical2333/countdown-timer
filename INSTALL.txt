@@ -1,0 +1,21 @@
+倒计时提醒器 v2.0 - 安装说明
+===============================
+
+系统要求:
+- Linux操作系统 (Ubuntu 18.04+, Debian 10+等)
+- Python 3.8+
+- 支持X11的桌面环境
+
+快速安装:
+1. 解压文件包
+2. 进入目录: cd countdown-timer-v2.0
+3. 运行安装: sudo bash install.sh
+
+使用方法:
+- 应用程序菜单中找到"倒计时提醒器"
+- 或命令行运行: countdown-timer
+
+卸载方法:
+- 运行: sudo bash uninstall.sh
+
+更多信息请查看 README.md
