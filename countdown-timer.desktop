@@ -1,0 +1,15 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=倒计时提醒器
+Name[en]=Countdown Timer
+Comment=自定义倒计时时间和提醒内容的桌面应用
+Comment[en]=Desktop countdown timer with custom time and reminder messages
+Exec=/opt/countdown-timer/countdown_timer.py
+Icon=/opt/countdown-timer/icon.png
+Terminal=false
+StartupNotify=true
+Categories=Utility;Office;
+Keywords=timer;countdown;reminder;productivity;
+MimeType=
+StartupWMClass=CountdownTimer
