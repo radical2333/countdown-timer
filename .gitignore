@@ -129,5 +129,7 @@ Thumbs.db
 countdown-timer-v*.tar.gz
 countdown-timer-v*/
 git_push.sh
+push_clean.sh
 GITHUB_RELEASE_CHECKLIST.md
 PROJECT_SUMMARY.md
+manual_push.sh
