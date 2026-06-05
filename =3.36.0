@@ -1,0 +1,7 @@
+Looking in indexes: https://pypi.mirrors.ustc.edu.cn/simple/
+Requirement already satisfied: pystray in /usr/local/lib/python3.8/dist-packages (0.19.5)
+Requirement already satisfied: Pillow in /usr/lib/python3/dist-packages (7.0.0)
+Requirement already satisfied: PyGObject in /usr/lib/python3/dist-packages (3.36.0)
+Requirement already satisfied: python-xlib>=0.17; sys_platform == "linux" in /usr/local/lib/python3.8/dist-packages (from pystray) (0.33)
+Requirement already satisfied: six in /usr/lib/python3/dist-packages (from pystray) (1.14.0)
+Requirement already satisfied: pycairo>=1.11.1 in /usr/lib/python3/dist-packages (from PyGObject) (1.16.2)
