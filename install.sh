@@ -42,30 +42,14 @@ APP_DIR="/opt/countdown-timer"
 mkdir -p "$APP_DIR"
 echo "✅ 应用程序目录创建完成: $APP_DIR"
 
-<<<<<<< HEAD
-# 使用隔离环境，避免新版发行版的 PEP 668 系统 Python 限制。
-# system-site-packages 允许复用包管理器安装的 PyGObject。
-python3 -m venv --system-site-packages "$APP_DIR/venv"
-"$APP_DIR/venv/bin/pip" install --upgrade pip
-"$APP_DIR/venv/bin/pip" install -r requirements.txt
-=======
 echo ""
 echo "📦 步骤 3/5: 创建隔离的虚拟环境并安装依赖..."
 
-# 在安装目录创建虚拟环境，解决外部环境管理错误 (PEP 668)
-# 使用 --system-site-packages 是为了能直接调用系统安装好的 python3-gi (PyGObject)
+# 使用隔离环境，避免新版发行版的 PEP 668 系统 Python 限制。
+# system-site-packages 允许复用包管理器安装的 PyGObject。
 python3 -m venv --system-site-packages "$APP_DIR/venv"
-
-# 使用虚拟环境内的 pip 进行安装
-"$APP_DIR/venv/bin/pip" install --upgrade pip
-"$APP_DIR/venv/bin/pip" install pystray>=0.19.0 Pillow>=8.0.0 PyGObject>=3.36.0
-
-if [ $? -ne 0 ]; then
-    echo "❌ Python依赖安装失败"
-    exit 1
-fi
+"$APP_DIR/venv/bin/pip" install -r requirements.txt
 echo "✅ Python依赖在虚拟环境中安装完成"
->>>>>>> 75762542cb0d55ebd4ba959e19769df65e07e0ef
 
 echo ""
 echo "📋 步骤 4/5: 复制文件并生成快捷方式..."
@@ -84,10 +68,7 @@ Version=1.0
 Type=Application
 Name=倒计时提醒器
 Comment=自定义倒计时时间和提醒内容的桌面应用
-<<<<<<< HEAD
 Comment[en]=Desktop countdown timer with custom time and reminder messages
-=======
->>>>>>> 75762542cb0d55ebd4ba959e19769df65e07e0ef
 Exec=$APP_DIR/venv/bin/python3 $APP_DIR/countdown_timer.py
 Icon=$APP_DIR/icon.png
 Terminal=false
@@ -109,7 +90,6 @@ echo "✅ 应用程序安装完成"
 echo ""
 echo "🧪 步骤 5/5: 环境兼容性检查..."
 
-<<<<<<< HEAD
 # 测试程序是否可以正常导入
 "$APP_DIR/venv/bin/python3" -c "
 import importlib.util
@@ -150,13 +130,3 @@ echo "💡 如果在应用程序菜单中找不到程序，请："
 echo "   1. 注销并重新登录"
 echo "   2. 或重启桌面环境"
 echo ""
-=======
-"$APP_DIR/venv/bin/python3" -c "import pystray, PIL, gi; print('✅ 模块导入正常')" 2>/dev/null
-
-if [ $? -eq 0 ]; then
-    echo "🎉 安装成功！"
-    echo "现在可以通过菜单搜索 '倒计时提醒器' 或在终端输入 'countdown-timer' 运行。"
-else
-    echo "⚠️  警告：环境检查未完全通过，可能是由于缺少特定桌面环境的库。"
-fi
->>>>>>> 75762542cb0d55ebd4ba959e19769df65e07e0ef
