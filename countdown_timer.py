@@ -10,21 +10,19 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 import threading
+import queue
 import time
 import subprocess
 import sys
 import os
 from datetime import datetime, timedelta
 
-# 添加环境变量设置
-os.environ['PYSTRAY_BACKEND'] = 'appindicator'  # 强制使用AppIndicator后端
-
 try:
     import pystray
     from PIL import Image, ImageDraw
     TRAY_AVAILABLE = True
     print("✅ 系统托盘功能已启用")
-except ImportError as e:
+except Exception:
     TRAY_AVAILABLE = False
     print("💡 提示: 系统托盘功能不可用")
     print("   可能需要安装: sudo apt install python3-gi libgirepository1.0-dev")
@@ -40,6 +38,7 @@ class CountdownTimer:
         # 系统托盘相关
         self.tray_icon = None
         self.is_minimized_to_tray = False
+        self.is_quitting = False
         
         # 防止意外关闭
         self.root.protocol("WM_DELETE_WINDOW", self.on_window_close)
@@ -49,7 +48,11 @@ class CountdownTimer:
         self.remaining_seconds = 0
         self.is_running = False
         self.is_paused = False
-        self.timer_thread = None
+        self.timer_after_id = None
+
+        # pystray 的菜单回调不在 Tk 主线程中执行。
+        self.ui_queue = queue.Queue()
+        self.root.after(100, self.process_ui_queue)
         
         # 居中窗口
         self.center_window()
@@ -301,11 +304,8 @@ class CountdownTimer:
             self.stop_button.config(state=tk.NORMAL)
             self.status_label.config(text="倒计时进行中...", fg="#e67e22")
             
-            # 启动倒计时线程
-            if self.timer_thread is None or not self.timer_thread.is_alive():
-                self.timer_thread = threading.Thread(target=self.countdown_worker)
-                self.timer_thread.daemon = True
-                self.timer_thread.start()
+            self.update_display()
+            self.schedule_countdown_tick()
                 
         except ValueError:
             messagebox.showerror("错误", "请输入有效的数字！")
@@ -313,6 +313,7 @@ class CountdownTimer:
     def pause_countdown(self):
         """暂停倒计时"""
         self.is_paused = True
+        self.cancel_countdown_tick()
         self.start_button.config(text="继续", bg="#3498db")
         self.status_label.config(text="已暂停", fg="#f39c12")
         
@@ -321,22 +322,31 @@ class CountdownTimer:
         self.is_paused = False
         self.start_button.config(text="暂停", bg="#f39c12")
         self.status_label.config(text="倒计时进行中...", fg="#e67e22")
-            
-    def countdown_worker(self):
-        """倒计时工作线程"""
-        while self.is_running and self.remaining_seconds > 0:
-            if not self.is_paused:
-                # 更新显示
-                self.root.after(0, self.update_display)
-                time.sleep(1)
-                self.remaining_seconds -= 1
-            else:
-                # 暂停时短暂等待
-                time.sleep(0.1)
-                
-        if self.remaining_seconds <= 0 and self.is_running:
-            # 倒计时结束
-            self.root.after(0, self.countdown_finished)
+        self.schedule_countdown_tick()
+
+    def schedule_countdown_tick(self):
+        """在 Tk 主线程中安排下一次计时。"""
+        if self.timer_after_id is None and self.is_running and not self.is_paused:
+            self.timer_after_id = self.root.after(1000, self.countdown_tick)
+
+    def cancel_countdown_tick(self):
+        """取消尚未执行的计时，避免停止或重置后继续减秒。"""
+        if self.timer_after_id is not None:
+            self.root.after_cancel(self.timer_after_id)
+            self.timer_after_id = None
+
+    def countdown_tick(self):
+        """执行一次倒计时。"""
+        self.timer_after_id = None
+        if not self.is_running or self.is_paused:
+            return
+
+        self.remaining_seconds -= 1
+        self.update_display()
+        if self.remaining_seconds <= 0:
+            self.countdown_finished()
+        else:
+            self.schedule_countdown_tick()
             
     def update_display(self):
         """更新倒计时显示"""
@@ -356,6 +366,7 @@ class CountdownTimer:
         """倒计时结束处理"""
         self.is_running = False
         self.is_paused = False
+        self.timer_after_id = None
         self.countdown_label.config(text="00:00:00", fg="#e74c3c")
         self.status_label.config(text="时间到！", fg="#e74c3c")
         
@@ -458,6 +469,7 @@ class CountdownTimer:
         """停止倒计时"""
         self.is_running = False
         self.is_paused = False
+        self.cancel_countdown_tick()
         self.start_button.config(text="开始倒计时", bg="#27ae60")
         self.stop_button.config(state=tk.DISABLED)
         self.status_label.config(text="已停止", fg="#e74c3c")
@@ -466,6 +478,7 @@ class CountdownTimer:
         """重置倒计时"""
         self.is_running = False
         self.is_paused = False
+        self.cancel_countdown_tick()
         self.remaining_seconds = 0
         self.countdown_label.config(text="00:05:00", fg="#2c3e50")
         self.start_button.config(text="开始倒计时", bg="#27ae60")
@@ -491,12 +504,12 @@ class CountdownTimer:
             
             # 创建托盘菜单
             menu = pystray.Menu(
-                pystray.MenuItem("显示主窗口", self.show_window),
+                pystray.MenuItem("显示主窗口", self.tray_show_window),
                 pystray.MenuItem("开始倒计时", self.tray_start_countdown),
                 pystray.MenuItem("停止倒计时", self.tray_stop_countdown),
                 pystray.MenuItem("重置倒计时", self.tray_reset_countdown),
                 pystray.Menu.SEPARATOR,
-                pystray.MenuItem("退出程序", self.quit_application)
+                pystray.MenuItem("退出程序", self.tray_quit_application)
             )
             
             # 创建托盘图标
@@ -574,6 +587,22 @@ class CountdownTimer:
         self.root.lift()       # 置顶
         self.root.focus_force() # 获取焦点
         self.is_minimized_to_tray = False
+
+    def process_ui_queue(self):
+        """在 Tk 主线程中执行来自托盘线程的操作。"""
+        try:
+            while True:
+                callback = self.ui_queue.get_nowait()
+                callback()
+                if self.is_quitting:
+                    return
+        except queue.Empty:
+            pass
+
+        try:
+            self.root.after(100, self.process_ui_queue)
+        except tk.TclError:
+            pass
         
     def update_tray_tooltip(self):
         """更新托盘图标提示文字"""
@@ -590,21 +619,35 @@ class CountdownTimer:
             
     def tray_start_countdown(self, icon=None, item=None):
         """从托盘开始倒计时"""
+        self.ui_queue.put(self.start_countdown_from_tray)
+
+    def start_countdown_from_tray(self):
         if not self.is_running:
-            self.root.after(0, self.start_countdown)
+            self.start_countdown()
             
     def tray_stop_countdown(self, icon=None, item=None):
         """从托盘停止倒计时"""
+        self.ui_queue.put(self.stop_countdown_from_tray)
+
+    def stop_countdown_from_tray(self):
         if self.is_running:
-            self.root.after(0, self.stop_countdown)
+            self.stop_countdown()
             
     def tray_reset_countdown(self, icon=None, item=None):
         """从托盘重置倒计时"""
-        self.root.after(0, self.reset_countdown)
+        self.ui_queue.put(self.reset_countdown)
+
+    def tray_show_window(self, icon=None, item=None):
+        self.ui_queue.put(self.show_window)
+
+    def tray_quit_application(self, icon=None, item=None):
+        self.ui_queue.put(self.quit_application)
         
     def quit_application(self, icon=None, item=None):
         """完全退出应用程序"""
         self.is_running = False
+        self.is_quitting = True
+        self.cancel_countdown_tick()
         if self.tray_icon and TRAY_AVAILABLE:
             self.tray_icon.stop()
         self.root.quit()
@@ -615,10 +658,10 @@ def main():
     # 检查图形环境
     try:
         # 检查DISPLAY环境变量
-        if not os.environ.get('DISPLAY'):
-            print("❌ 错误: 未检测到图形环境 (DISPLAY变量未设置)")
-            print("💡 建议: 使用命令行版本 'python3 terminal_timer.py'")
-            return
+        if not os.environ.get('DISPLAY') and not os.environ.get('WAYLAND_DISPLAY'):
+            print("❌ 错误: 未检测到图形环境")
+            print("💡 请在桌面环境中运行此程序")
+            return 1
             
         root = tk.Tk()
         
@@ -630,8 +673,8 @@ def main():
         print("💡 可能的解决方案:")
         print("1. 检查是否安装了 python3-tk: sudo apt install python3-tk")
         print("2. 检查X11转发是否正常")
-        print("3. 尝试使用命令行版本: python3 terminal_timer.py")
-        return
+        print("3. 确认当前终端可以启动图形应用")
+        return 1
     
     try:
         app = CountdownTimer(root)
@@ -646,10 +689,11 @@ def main():
         
         # 启动主循环
         root.mainloop()
+        return 0
         
     except Exception as e:
         print(f"❌ 程序运行错误: {e}")
-        print("💡 建议使用命令行版本: python3 terminal_timer.py")
+        return 1
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

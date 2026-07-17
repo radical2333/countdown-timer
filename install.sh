@@ -1,6 +1,11 @@
 #!/bin/bash
 # 倒计时提醒器 v2.0 - 系统安装脚本
 
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
+
 echo "🎯 倒计时提醒器 v2.0 - 系统安装"
 echo "======================================="
 echo "这将把倒计时提醒器安装到您的Linux系统中"
@@ -40,11 +45,6 @@ elif command -v pacman &> /dev/null; then
     pacman -S --noconfirm python python-pip tk python-gobject desktop-file-utils
 fi
 
-if [ $? -ne 0 ]; then
-    echo "❌ 系统依赖安装失败"
-    exit 1
-fi
-
 echo "✅ 系统依赖安装完成"
 echo ""
 echo "📁 步骤 2/5: 创建应用程序目录..."
@@ -57,13 +57,11 @@ echo "✅ 应用程序目录创建完成: $APP_DIR"
 echo ""
 echo "📦 步骤 3/5: 安装Python依赖..."
 
-# 安装Python依赖到系统
-pip3 install pystray>=0.19.0 Pillow>=8.0.0 PyGObject>=3.36.0
-
-if [ $? -ne 0 ]; then
-    echo "❌ Python依赖安装失败"
-    exit 1
-fi
+# 使用隔离环境，避免新版发行版的 PEP 668 系统 Python 限制。
+# system-site-packages 允许复用包管理器安装的 PyGObject。
+python3 -m venv --system-site-packages "$APP_DIR/venv"
+"$APP_DIR/venv/bin/pip" install --upgrade pip
+"$APP_DIR/venv/bin/pip" install -r requirements.txt
 
 echo "✅ Python依赖安装完成"
 echo ""
@@ -96,7 +94,7 @@ Name=倒计时提醒器
 Name[en]=Countdown Timer
 Comment=自定义倒计时时间和提醒内容的桌面应用
 Comment[en]=Desktop countdown timer with custom time and reminder messages
-Exec=$APP_DIR/countdown_timer.py
+Exec=$APP_DIR/venv/bin/python3 $APP_DIR/countdown_timer.py
 Icon=$APP_DIR/icon.png
 Terminal=false
 StartupNotify=true
@@ -115,20 +113,17 @@ echo ""
 echo "🧪 步骤 5/5: 测试安装..."
 
 # 测试程序是否可以正常导入
-python3 -c "
+"$APP_DIR/venv/bin/python3" -c "
+import importlib.util
 import sys
 sys.path.insert(0, '$APP_DIR')
 import tkinter as tk
-import pystray
+assert importlib.util.find_spec('pystray') is not None
 from PIL import Image
 print('✅ 所有模块导入成功')
-" 2>/dev/null
+"
 
-if [ $? -eq 0 ]; then
-    echo "✅ 安装测试通过"
-else
-    echo "⚠️  安装测试未完全通过，但应用程序应该可以使用"
-fi
+echo "✅ 安装测试通过"
 
 echo ""
 echo "🎉 安装完成！"
