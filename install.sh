@@ -73,7 +73,7 @@ Exec=$APP_DIR/venv/bin/python3 $APP_DIR/countdown_timer.py
 Icon=$APP_DIR/icon.png
 Terminal=false
 StartupNotify=true
-Categories=Utility;Office;
+Categories=Utility;
 EOF
 
 # 创建全局命令行启动脚本
@@ -110,7 +110,7 @@ echo ""
 echo "📱 启动方式："
 echo "   1. 在应用程序菜单中搜索 '倒计时提醒器'"
 echo "   2. 命令行运行: countdown-timer"
-echo "   3. 或直接运行: $APP_DIR/countdown_timer.py"
+echo "   3. 或直接运行: $APP_DIR/venv/bin/python3 $APP_DIR/countdown_timer.py"
 echo ""
 echo "🗑️  卸载方式："
 echo "   运行项目目录下的: sudo bash uninstall.sh"
@@ -122,7 +122,7 @@ echo "   • 系统托盘后台运行"
 echo "   • 预设常用时间（番茄工作法等）"
 echo "   • 多种提醒方式（声音+弹窗+置顶）"
 echo ""
-echo "📚 更多帮助: https://github.com/radical2333/countdown-timer"
+echo "📚 更多帮助: 请查看项目 README.md"
 echo ""
 
 # 提示用户重新登录或更新桌面环境

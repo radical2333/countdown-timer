@@ -65,10 +65,14 @@ fi
 echo ""
 echo "🧹 步骤 4/4: 清理缓存..."
 
-# 清理可能的缓存文件
-if [ -d "/home/*/.cache/countdown-timer" ]; then
-    rm -rf /home/*/.cache/countdown-timer 2>/dev/null
-fi
+# 清理可能的缓存文件。使用 nullglob，避免把未展开的 * 当作字面路径。
+shopt -s nullglob
+cache_dirs=(/home/*/.cache/countdown-timer /root/.cache/countdown-timer)
+for cache_dir in "${cache_dirs[@]}"; do
+    if [ -d "$cache_dir" ]; then
+        rm -rf -- "$cache_dir"
+    fi
+done
 
 echo "✅ 清理完成"
 echo ""

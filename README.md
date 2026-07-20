@@ -2,29 +2,27 @@
 
 一个功能完整的桌面倒计时应用，支持自定义时间、提醒内容和系统托盘功能。
 
-![Python](https://img.shields.io/badge/Python-3.8%2B-blue)
-![Platform](https://img.shields.io/badge/Platform-Linux-green)
-![License](https://img.shields.io/badge/License-MIT-yellow)
+作者：Radical_3
 
-## ✨ 功能特性
+## 功能特性
 
-- 🕐 **自定义倒计时时间** - 支持小时、分钟、秒的精确设置
-- 📝 **自定义提醒内容** - 可设置个性化的提醒文字
-- ⏸️ **暂停/继续功能** - 随时暂停和恢复倒计时
-- 🔄 **停止/重置功能** - 完整的计时器控制
-- 🔔 **多种提醒方式** - 声音提醒 + 弹窗提醒 + 窗口置顶
-- 📱 **系统托盘支持** - 最小化到托盘后台运行
-- ⚡ **预设时间快捷设置** - 内置常用时间（番茄工作法等）
-- 🛡️ **防误关保护** - 关闭窗口时智能询问
-- 🎨 **现代化界面** - 简洁美观的用户界面
+- **自定义倒计时时间** - 支持小时、分钟、秒的精确设置
+- **自定义提醒内容** - 可设置个性化的提醒文字
+- **暂停/继续功能** - 随时暂停和恢复倒计时
+- **停止/重置功能** - 完整的计时器控制
+- **多种提醒方式** - 声音提醒 + 弹窗提醒 + 窗口置顶
+- **系统托盘支持** - 最小化到托盘后台运行
+- **预设时间快捷设置** - 内置常用时间（番茄工作法等）
+- **防误关保护** - 关闭窗口时智能询问
+- **现代化界面** - 简洁美观的用户界面
 
-## 📋 系统要求
+## 系统要求
 
 - **操作系统**: Linux (Ubuntu 18.04+, Debian 10+等)
 - **Python版本**: Python 3.8+
 - **桌面环境**: 支持X11的桌面环境（GNOME, KDE, XFCE等）
 
-## 🚀 快速开始
+## 快速开始
 
 ### 1. 系统依赖安装
 
@@ -44,7 +42,7 @@ sudo pacman -S python-pip tk python-gobject
 
 ```bash
 # 下载项目
-git clone https://github.com/radical2333/countdown-timer.git
+git clone <repository-url>
 cd countdown-timer
 
 # 系统级安装（需要sudo权限）
@@ -54,7 +52,7 @@ sudo bash install.sh
 安装完成后，您可以：
 - 在应用菜单中找到"倒计时提醒器"
 - 直接运行命令：`countdown-timer`（全局启动器）
-- 或运行：`/opt/countdown-timer/countdown_timer.py`
+- 或运行：`/opt/countdown-timer/venv/bin/python3 /opt/countdown-timer/countdown_timer.py`
 
 ### 3. 开发者模式安装
 
@@ -72,7 +70,7 @@ pip install -r requirements.txt
 python3 countdown_timer.py
 ```
 
-## 📖 使用说明
+## 使用说明
 
 ### 基本操作
 
@@ -96,7 +94,7 @@ python3 countdown_timer.py
 - 25分钟（番茄工作法）
 - 30分钟、45分钟、1小时
 
-## 🔧 故障排除
+## 故障排除
 
 ### 系统托盘不显示
 
@@ -133,7 +131,7 @@ pulseaudio --check -v
 sudo apt install pulseaudio-utils alsa-utils
 ```
 
-## �️ 卸载程序
+## 卸载程序
 
 如果您通过系统安装方式安装了程序，可以使用卸载脚本完全移除：
 
@@ -151,7 +149,7 @@ sudo bash uninstall.sh
 > 注意：Python依赖包将保留在系统中，如需手动清理可运行：
 > `pip3 uninstall pystray Pillow PyGObject`
 
-## �📁 项目结构
+## 项目结构
 
 ```
 countdown-timer/
@@ -167,7 +165,7 @@ countdown-timer/
 └── LICENSE               # 开源许可证
 ```
 
-## 🛠️ 开发信息
+## 开发信息
 
 - **开发语言**: Python 3.8+
 - **GUI框架**: Tkinter
@@ -175,21 +173,21 @@ countdown-timer/
 - **图像处理**: Pillow
 - **系统集成**: PyGObject
 
-## 📝 更新日志
+## 更新日志
 
 ### v2.0 (2025-07-14)
-- ✅ 重构代码架构，提升稳定性
-- ✅ 优化系统托盘兼容性（支持Unity/GNOME）
-- ✅ 改进提醒窗口（强制置顶，去除闪烁）
-- ✅ 增强错误处理和用户提示
-- ✅ 完善安装和启动脚本
+- 重构代码架构，提升稳定性
+- 优化系统托盘兼容性（支持Unity/GNOME）
+- 改进提醒窗口（强制置顶，去除闪烁）
+- 增强错误处理和用户提示
+- 完善安装和启动脚本
 
 ### v1.0
-- ✅ 基础倒计时功能
-- ✅ 图形用户界面
-- ✅ 系统托盘支持
+- 基础倒计时功能
+- 图形用户界面
+- 系统托盘支持
 
-## 🤝 贡献指南
+## 贡献指南
 
 欢迎提交问题报告、功能请求或代码贡献：
 
@@ -212,11 +210,11 @@ countdown-timer/
 bash package.sh
 ```
 
-## 📄 开源许可
+## 开源许可
 
 本项目采用 MIT 许可证 - 查看 [LICENSE](LICENSE) 文件了解详情。
 
-## 💡 致谢
+## 致谢
 
 - 感谢 [PySystemTray](https://github.com/moses-palmer/pystray) 提供系统托盘支持
 - 感谢 [Pillow](https://pillow.readthedocs.io/) 提供图像处理功能
@@ -224,6 +222,4 @@ bash package.sh
 
 ---
 
-📧 **联系方式**: 如有问题或建议，请通过 GitHub Issues 联系。
-
-⭐ 如果这个项目对您有帮助，请考虑给它一个 Star！
+**联系方式**: 如有问题或建议，请通过项目的 Issues 页面联系。

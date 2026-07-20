@@ -8,14 +8,14 @@
 """
 
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import messagebox
 import threading
 import queue
+import math
 import time
 import subprocess
 import sys
 import os
-from datetime import datetime, timedelta
 
 try:
     import pystray
@@ -28,6 +28,14 @@ except Exception:
     print("   可能需要安装: sudo apt install python3-gi libgirepository1.0-dev")
     print("   然后运行: pip install PyGObject pystray pillow")
 
+
+def current_time():
+    """返回包含系统挂起时间的单调时钟（平台支持时）。"""
+    if hasattr(time, "CLOCK_BOOTTIME"):
+        return time.clock_gettime(time.CLOCK_BOOTTIME)
+    return time.monotonic()
+
+
 class CountdownTimer:
     def __init__(self, root):
         self.root = root
@@ -37,6 +45,7 @@ class CountdownTimer:
         
         # 系统托盘相关
         self.tray_icon = None
+        self.tray_ready = False
         self.is_minimized_to_tray = False
         self.is_quitting = False
         
@@ -46,6 +55,8 @@ class CountdownTimer:
         # 倒计时相关变量
         self.total_seconds = 0
         self.remaining_seconds = 0
+        self.remaining_duration = 0.0
+        self.end_time = None
         self.is_running = False
         self.is_paused = False
         self.timer_after_id = None
@@ -157,7 +168,7 @@ class CountdownTimer:
 适用系统：Linux (Ubuntu, Debian, etc.)
 技术栈：Python + Tkinter + PyTray
 
-© 2025 - 开源软件，自由使用"""
+开源软件，自由使用"""
         
         messagebox.showinfo("关于倒计时提醒器", about_text)
         
@@ -269,6 +280,15 @@ class CountdownTimer:
         minutes = (seconds % 3600) // 60
         secs = seconds % 60
         return f"{hours:02d}:{minutes:02d}:{secs:02d}"
+
+    def get_configured_seconds(self):
+        """读取并校验时间输入。"""
+        hours = int(self.hours_var.get())
+        minutes = int(self.minutes_var.get())
+        seconds = int(self.seconds_var.get())
+        if not 0 <= hours <= 23 or not 0 <= minutes <= 59 or not 0 <= seconds <= 59:
+            raise ValueError
+        return hours * 3600 + minutes * 60 + seconds
         
     def toggle_countdown(self):
         """开始/暂停倒计时切换"""
@@ -283,21 +303,19 @@ class CountdownTimer:
     def start_countdown(self):
         """开始倒计时"""
         try:
-            if self.remaining_seconds <= 0:
-                hours = int(self.hours_var.get())
-                minutes = int(self.minutes_var.get())
-                seconds = int(self.seconds_var.get())
-                
-                self.total_seconds = hours * 3600 + minutes * 60 + seconds
+            if self.remaining_duration <= 0:
+                self.total_seconds = self.get_configured_seconds()
                 
                 if self.total_seconds <= 0:
                     messagebox.showwarning("警告", "请设置一个有效的倒计时时间！")
                     return
                     
+                self.remaining_duration = float(self.total_seconds)
                 self.remaining_seconds = self.total_seconds
             
             self.is_running = True
             self.is_paused = False
+            self.end_time = current_time() + self.remaining_duration
             
             # 更新按钮状态
             self.start_button.config(text="暂停", bg="#f39c12")
@@ -308,18 +326,26 @@ class CountdownTimer:
             self.schedule_countdown_tick()
                 
         except ValueError:
-            messagebox.showerror("错误", "请输入有效的数字！")
+            messagebox.showerror("错误", "请输入有效时间：小时 0-23，分钟和秒 0-59。")
             
     def pause_countdown(self):
         """暂停倒计时"""
+        self.sync_remaining_time()
+        if self.remaining_duration <= 0:
+            self.countdown_finished()
+            return
         self.is_paused = True
+        self.end_time = None
         self.cancel_countdown_tick()
         self.start_button.config(text="继续", bg="#3498db")
         self.status_label.config(text="已暂停", fg="#f39c12")
         
     def resume_countdown(self):
         """继续倒计时"""
+        if self.remaining_duration <= 0:
+            return
         self.is_paused = False
+        self.end_time = current_time() + self.remaining_duration
         self.start_button.config(text="暂停", bg="#f39c12")
         self.status_label.config(text="倒计时进行中...", fg="#e67e22")
         self.schedule_countdown_tick()
@@ -327,7 +353,11 @@ class CountdownTimer:
     def schedule_countdown_tick(self):
         """在 Tk 主线程中安排下一次计时。"""
         if self.timer_after_id is None and self.is_running and not self.is_paused:
-            self.timer_after_id = self.root.after(1000, self.countdown_tick)
+            remaining = max(0.0, self.end_time - current_time())
+            displayed_seconds = math.ceil(remaining)
+            delay = remaining - max(0, displayed_seconds - 1)
+            delay_ms = max(10, math.ceil(delay * 1000))
+            self.timer_after_id = self.root.after(delay_ms, self.countdown_tick)
 
     def cancel_countdown_tick(self):
         """取消尚未执行的计时，避免停止或重置后继续减秒。"""
@@ -341,12 +371,19 @@ class CountdownTimer:
         if not self.is_running or self.is_paused:
             return
 
-        self.remaining_seconds -= 1
+        self.sync_remaining_time()
         self.update_display()
-        if self.remaining_seconds <= 0:
+        if self.remaining_duration <= 0:
             self.countdown_finished()
         else:
             self.schedule_countdown_tick()
+
+    def sync_remaining_time(self):
+        """根据单调时钟同步剩余时间，避免休眠或界面卡顿造成漂移。"""
+        if self.end_time is None:
+            return
+        self.remaining_duration = max(0.0, self.end_time - current_time())
+        self.remaining_seconds = math.ceil(self.remaining_duration)
             
     def update_display(self):
         """更新倒计时显示"""
@@ -366,6 +403,8 @@ class CountdownTimer:
         """倒计时结束处理"""
         self.is_running = False
         self.is_paused = False
+        self.remaining_duration = 0.0
+        self.end_time = None
         self.timer_after_id = None
         self.countdown_label.config(text="00:00:00", fg="#e74c3c")
         self.status_label.config(text="时间到！", fg="#e74c3c")
@@ -429,30 +468,37 @@ class CountdownTimer:
                  bg="#3498db", fg="white", 
                  width=10).pack(pady=20)
         
-        # 播放提示音
+        # 播放提示音，避免外部音频命令阻塞 Tk 主线程。
         self.play_notification_sound()
         
         # 强制获取焦点
-        notification_window.after(100, lambda: notification_window.focus_force())
+        notification_window.after(100, lambda: self.focus_notification(notification_window))
+
+    @staticmethod
+    def focus_notification(window):
+        try:
+            if window.winfo_exists():
+                window.focus_force()
+        except tk.TclError:
+            pass
         
     def play_notification_sound(self):
         """播放提示音"""
-        try:
-            # 在Linux上使用paplay播放系统提示音
-            subprocess.run(["paplay", "/usr/share/sounds/alsa/Front_Left.wav"], 
-                          check=False, capture_output=True)
-        except:
+        threading.Thread(target=self._play_notification_sound, daemon=True).start()
+
+    @staticmethod
+    def _play_notification_sound():
+        """在后台尝试可用的声音播放器。"""
+        sound_file = "/usr/share/sounds/alsa/Front_Left.wav"
+        commands = (["paplay", sound_file], ["aplay", sound_file], ["beep"])
+        for command in commands:
             try:
-                # 备选方案：使用aplay
-                subprocess.run(["aplay", "/usr/share/sounds/alsa/Front_Left.wav"], 
-                              check=False, capture_output=True)
-            except:
-                try:
-                    # 备选方案：使用系统beep
-                    subprocess.run(["beep"], check=False, capture_output=True)
-                except:
-                    # 最后备选：打印到终端
-                    print("\a")  # ASCII bell character
+                result = subprocess.run(command, check=False, capture_output=True, timeout=5)
+                if result.returncode == 0:
+                    return
+            except (OSError, subprocess.TimeoutExpired):
+                continue
+        print("\a")
                     
     def flash_window(self, window):
         """使窗口闪烁"""
@@ -467,8 +513,10 @@ class CountdownTimer:
             
     def stop_countdown(self):
         """停止倒计时"""
+        self.sync_remaining_time()
         self.is_running = False
         self.is_paused = False
+        self.end_time = None
         self.cancel_countdown_tick()
         self.start_button.config(text="开始倒计时", bg="#27ae60")
         self.stop_button.config(state=tk.DISABLED)
@@ -479,8 +527,13 @@ class CountdownTimer:
         self.is_running = False
         self.is_paused = False
         self.cancel_countdown_tick()
+        self.remaining_duration = 0.0
         self.remaining_seconds = 0
-        self.countdown_label.config(text="00:05:00", fg="#2c3e50")
+        try:
+            display_text = self.format_time(self.get_configured_seconds())
+        except ValueError:
+            display_text = "00:00:00"
+        self.countdown_label.config(text=display_text, fg="#2c3e50")
         self.start_button.config(text="开始倒计时", bg="#27ae60")
         self.stop_button.config(state=tk.DISABLED)
         self.status_label.config(text="准备就绪", fg="#27ae60")
@@ -532,14 +585,42 @@ class CountdownTimer:
         """安全运行系统托盘"""
         try:
             if self.tray_icon:
-                self.tray_icon.run()
+                self.tray_icon.run(setup=self._setup_tray_safe)
+                if not self.is_quitting:
+                    self.ui_queue.put(lambda: self.handle_tray_failure("托盘服务已停止"))
         except Exception as e:
             print(f"❌ 托盘运行错误: {e}")
             print("💡 可能的原因:")
             print("   1. 系统托盘管理器未运行")
             print("   2. 桌面环境不支持托盘")
             print("   3. 需要重新登录桌面环境")
-            self.tray_icon = None
+            self.ui_queue.put(
+                lambda message=str(e): self.handle_tray_failure(message)
+            )
+
+    def _setup_tray_safe(self, icon):
+        """等待后端就绪后再允许窗口隐藏到托盘。"""
+        try:
+            icon.visible = True
+            self.ui_queue.put(self.mark_tray_ready)
+        except Exception as e:
+            self.ui_queue.put(
+                lambda message=str(e): self.handle_tray_failure(message)
+            )
+
+    def mark_tray_ready(self):
+        self.tray_ready = True
+
+    def handle_tray_failure(self, message):
+        """在 Tk 主线程恢复可能已隐藏的窗口。"""
+        if self.is_quitting:
+            return
+        print(f"系统托盘不可用: {message}")
+        self.tray_ready = False
+        self.tray_icon = None
+        if self.is_minimized_to_tray:
+            self.show_window()
+            messagebox.showwarning("系统托盘不可用", "托盘启动失败，主窗口已恢复。")
             
     def on_window_close(self):
         """处理窗口关闭事件"""
@@ -573,12 +654,12 @@ class CountdownTimer:
                 
     def minimize_to_tray(self):
         """最小化到系统托盘"""
-        if TRAY_AVAILABLE and self.tray_icon:
+        if TRAY_AVAILABLE and self.tray_icon and self.tray_ready:
             self.root.withdraw()  # 隐藏主窗口
             self.is_minimized_to_tray = True
             self.update_tray_tooltip()
         else:
-            messagebox.showinfo("提示", "系统托盘功能不可用，程序将最小化到任务栏")
+            messagebox.showinfo("提示", "系统托盘尚未就绪，程序将最小化到任务栏")
             self.root.iconify()
             
     def show_window(self, icon=None, item=None):
@@ -647,6 +728,7 @@ class CountdownTimer:
         """完全退出应用程序"""
         self.is_running = False
         self.is_quitting = True
+        self.tray_ready = False
         self.cancel_countdown_tick()
         if self.tray_icon and TRAY_AVAILABLE:
             self.tray_icon.stop()
